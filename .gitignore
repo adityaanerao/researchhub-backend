@@ -1,0 +1,7 @@
+.env
+*.exe
+*.test
+storage/papers/
+storage/certificates/
+storage/logos/
+!storage/certificate_template.jpg
