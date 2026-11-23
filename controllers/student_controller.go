@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -558,7 +559,7 @@ func DownloadCertificatePDF(c *gin.Context) {
 		return
 	}
 
-	safePath, err := services.Storage.ResolveSafePath(cert.PDFStoragePath)
+	reader, contentType, size, err := services.Storage.ReadFile(cert.PDFStoragePath)
 	if err != nil {
 		// Re-generate certificate PDF on the fly if missing from storage
 		storageDir := "./storage"
@@ -586,13 +587,24 @@ func DownloadCertificatePDF(c *gin.Context) {
 			utils.RespondError(c, http.StatusInternalServerError, "Failed to generate certificate PDF", gErr.Error())
 			return
 		}
-		safePath = genPath
-		_ = config.DB.Model(&cert).Update("pdf_storage_path", genPath).Error
+		if _, objKey, uErr := services.Storage.SaveGeneratedFile(genPath, "certificates", "application/pdf"); uErr == nil {
+			if objKey != genPath {
+				_ = os.Remove(genPath)
+			}
+			_ = config.DB.Model(&cert).Update("pdf_storage_path", objKey).Error
+			reader, contentType, size, err = services.Storage.ReadFile(objKey)
+		} else {
+			err = uErr
+		}
 	}
+	if err != nil || reader == nil {
+		utils.RespondError(c, http.StatusNotFound, "Certificate PDF unavailable", nil)
+		return
+	}
+	defer reader.Close()
 
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s_Certificate.pdf\"", cert.CertificateCode))
-	c.Header("Content-Type", "application/pdf")
-	c.File(safePath)
+	c.DataFromReader(http.StatusOK, size, contentType, reader, nil)
 }
 
 // DownloadPaperFile streams a submitted or revised paper PDF with strict role & ownership authorization
@@ -629,7 +641,7 @@ func DownloadPaperFile(c *gin.Context) {
 		return
 	}
 
-	safePath, err := services.Storage.ResolveSafePath(targetFile.StoragePath)
+	reader, contentType, size, err := services.Storage.ReadFile(targetFile.StoragePath)
 	if err != nil {
 		storageDir := "./storage"
 		if config.Cfg != nil && config.Cfg.StorageLocalPath != "" {
@@ -640,13 +652,24 @@ func DownloadPaperFile(c *gin.Context) {
 			utils.RespondError(c, http.StatusNotFound, "File not found on storage", nil)
 			return
 		}
-		safePath = genPath
-		_ = config.DB.Model(targetFile).Update("storage_path", genPath).Error
+		if _, objKey, uErr := services.Storage.SaveGeneratedFile(genPath, "papers", "application/pdf"); uErr == nil {
+			if objKey != genPath {
+				_ = os.Remove(genPath)
+			}
+			_ = config.DB.Model(targetFile).Update("storage_path", objKey).Error
+			reader, contentType, size, err = services.Storage.ReadFile(objKey)
+		} else {
+			err = uErr
+		}
 	}
+	if err != nil || reader == nil {
+		utils.RespondError(c, http.StatusNotFound, "File not found on storage", nil)
+		return
+	}
+	defer reader.Close()
 
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", targetFile.OriginalName))
-	c.Header("Content-Type", "application/pdf")
-	c.File(safePath)
+	c.DataFromReader(http.StatusOK, size, contentType, reader, nil)
 }
 
 func sanitizePaperForStudent(paper *models.ResearchPaper) {

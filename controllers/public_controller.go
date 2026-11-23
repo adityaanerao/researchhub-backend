@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -238,9 +239,9 @@ func DownloadPublishedPDF(c *gin.Context) {
 		return
 	}
 
-	safePath, err := services.Storage.ResolveSafePath(targetFile.StoragePath)
+	reader, contentType, size, err := services.Storage.ReadFile(targetFile.StoragePath)
 	if err != nil {
-		// Re-generate on the fly if storage directory was cleaned
+		// Re-generate on the fly if missing from storage, then upload to Storage
 		storageDir := "./storage"
 		if config.Cfg != nil && config.Cfg.StorageLocalPath != "" {
 			storageDir = config.Cfg.StorageLocalPath
@@ -248,22 +249,27 @@ func DownloadPublishedPDF(c *gin.Context) {
 		if pub.Paper != nil {
 			genPath, _, gErr := utils.GenerateSamplePaperPDF(storageDir, pub.Paper.SubmissionCode, pub.PublicationTitle, pub.Paper.CorrespondingAuthor, pub.Paper.Institution, pub.Paper.Abstract, pub.Paper.Keywords)
 			if gErr == nil {
-				safePath = genPath
-				_ = config.DB.Model(targetFile).Update("storage_path", genPath).Error
+				if _, objKey, uErr := services.Storage.SaveGeneratedFile(genPath, "publications", "application/pdf"); uErr == nil {
+					if objKey != genPath {
+						_ = os.Remove(genPath)
+					}
+					_ = config.DB.Model(targetFile).Update("storage_path", objKey).Error
+					reader, contentType, size, err = services.Storage.ReadFile(objKey)
+				}
 			}
 		}
 	}
 
-	if safePath == "" {
+	if err != nil || reader == nil {
 		utils.RespondError(c, http.StatusNotFound, "PDF file unavailable on storage", nil)
 		return
 	}
+	defer reader.Close()
 
 	_ = config.DB.Model(&pub).Update("download_count", pub.DownloadCount+1).Error
 	downloadName := fmt.Sprintf("%s_%s.pdf", pub.PublicationCode, strings.ReplaceAll(pub.PublicationTitle[:minInt(len(pub.PublicationTitle), 30)], " ", "_"))
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", downloadName))
-	c.Header("Content-Type", "application/pdf")
-	c.File(safePath)
+	c.DataFromReader(http.StatusOK, size, contentType, reader, nil)
 }
 
 // VerifyCertificatePublic verifies a certificate ID publicly without exposing private student personal contact information

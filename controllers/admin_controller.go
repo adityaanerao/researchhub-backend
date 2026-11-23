@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -963,6 +964,14 @@ func generateCertificatesForApprovedPaper(paper *models.ResearchPaper, issuedAt 
 			signatoryTitle,
 			verifyURL,
 		)
+		if pdfPath != "" && services.Storage != nil {
+			if _, objKey, uErr := services.Storage.SaveGeneratedFile(pdfPath, "certificates", "application/pdf"); uErr == nil {
+				if objKey != pdfPath {
+					_ = os.Remove(pdfPath)
+				}
+				pdfPath = objKey
+			}
+		}
 
 		cert := models.Certificate{
 			CertificateCode:   certCode,

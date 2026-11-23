@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"net/smtp"
 	"os"
@@ -73,7 +74,18 @@ func SendEmailWithAttachmentAsync(toEmail, recipientName, subject, bodyText, att
 		return
 	}
 
-	fileBytes, err := os.ReadFile(attachmentPath)
+	var fileBytes []byte
+	var err error
+	if Storage != nil {
+		var rc io.ReadCloser
+		rc, _, _, err = Storage.ReadFile(attachmentPath)
+		if err == nil {
+			defer rc.Close()
+			fileBytes, err = io.ReadAll(rc)
+		}
+	} else {
+		fileBytes, err = os.ReadFile(attachmentPath)
+	}
 	if err != nil {
 		log.Printf("[WARN] Attachment read failed (%s), sending email without attachment: %v", attachmentPath, err)
 		SendEmailAsync(toEmail, recipientName, subject, bodyText)

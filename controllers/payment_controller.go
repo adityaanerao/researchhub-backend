@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -171,6 +172,14 @@ func VerifyPayment(c *gin.Context) {
 		now.Format("January 02, 2006 15:04"),
 		payment.AmountINR,
 	)
+	if billPath != "" && services.Storage != nil {
+		if _, objKey, uErr := services.Storage.SaveGeneratedFile(billPath, "bills", "application/pdf"); uErr == nil {
+			if objKey != billPath {
+				_ = os.Remove(billPath)
+			}
+			billPath = objKey
+		}
+	}
 
 	_ = config.DB.Model(&payment).Updates(map[string]interface{}{
 		"razorpay_payment_id": req.RazorpayPaymentID,
@@ -212,13 +221,13 @@ func DownloadPaymentBill(c *gin.Context) {
 		return
 	}
 
-	safePath, err := services.Storage.ResolveSafePath(payment.BillPDFPath)
+	reader, contentType, size, err := services.Storage.ReadFile(payment.BillPDFPath)
 	if err != nil {
 		utils.RespondError(c, http.StatusNotFound, "Bill PDF file unavailable", nil)
 		return
 	}
+	defer reader.Close()
 
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s_Bill.pdf\"", payment.ReceiptNo))
-	c.Header("Content-Type", "application/pdf")
-	c.File(safePath)
+	c.DataFromReader(http.StatusOK, size, contentType, reader, nil)
 }
