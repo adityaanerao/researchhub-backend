@@ -216,6 +216,89 @@ func Register(c *gin.Context) {
 	})
 }
 
+// SendAdminLoginOTP sends a 6-digit OTP to an active SUPER_ADMIN email (e.g. aaaaditya82@gmail.com)
+func SendAdminLoginOTP(c *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.RespondError(c, http.StatusBadRequest, "Valid admin email address is required", err.Error())
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	var user models.User
+	if err := config.DB.Where("email = ? AND role_name = ? AND is_active = ?", email, models.RoleSuperAdmin, true).First(&user).Error; err != nil {
+		utils.RespondError(c, http.StatusForbidden, "This email is not authorized for Admin OTP login", nil)
+		return
+	}
+
+	otp := generate6DigitOTP()
+	_ = config.DB.Create(&models.EmailOTP{
+		Email:     email,
+		OTP:       otp,
+		Purpose:   "ADMIN_LOGIN",
+		ExpiresAt: time.Now().Add(15 * time.Minute),
+		Used:      false,
+	}).Error
+
+	go services.SendEmailAsync(
+		email,
+		user.FullName,
+		"Admin Login OTP - ResearchHub",
+		fmt.Sprintf("Your 6-digit OTP to log in to the ResearchHub Admin Dashboard is: <strong style='font-size:20px;color:#6d28d9;'>%s</strong><br/><br/>This OTP is valid for 15 minutes.", otp),
+	)
+
+	utils.RespondSuccess(c, http.StatusOK, "Admin login OTP has been sent to "+email, nil)
+}
+
+// VerifyAdminLoginOTP verifies the 6-digit OTP and logs the admin into the dashboard
+func VerifyAdminLoginOTP(c *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required,email"`
+		OTP   string `json:"otp" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.RespondError(c, http.StatusBadRequest, "Email and OTP are required", err.Error())
+		return
+	}
+
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	var user models.User
+	if err := config.DB.Where("email = ? AND role_name = ? AND is_active = ?", email, models.RoleSuperAdmin, true).First(&user).Error; err != nil {
+		utils.RespondError(c, http.StatusForbidden, "Admin account not found or inactive", nil)
+		return
+	}
+
+	var otpRec models.EmailOTP
+	if err := config.DB.Where("email = ? AND otp = ? AND purpose = ? AND used = ?", email, strings.TrimSpace(req.OTP), "ADMIN_LOGIN", false).
+		Order("created_at DESC").First(&otpRec).Error; err != nil {
+		utils.RespondError(c, http.StatusBadRequest, "Invalid OTP. Please request a valid OTP.", nil)
+		return
+	}
+	if time.Now().After(otpRec.ExpiresAt) {
+		utils.RespondError(c, http.StatusBadRequest, "OTP has expired. Please request a new OTP.", nil)
+		return
+	}
+	_ = config.DB.Model(&otpRec).Update("used", true).Error
+
+	now := time.Now()
+	_ = config.DB.Model(&user).Update("last_login_at", now).Error
+
+	token, _, err := utils.GenerateJWT(user.ID, user.Email, user.RoleName, user.FullName)
+	if err != nil {
+		utils.RespondError(c, http.StatusInternalServerError, "Failed to generate authentication token", nil)
+		return
+	}
+
+	services.LogAudit(user.ID, user.Email, user.RoleName, "ADMIN_OTP_LOGIN", "users", user.ID, "Admin logged in via Email OTP", c.ClientIP())
+
+	utils.RespondSuccess(c, http.StatusOK, "Admin login successful", gin.H{
+		"token": token,
+		"user":  user,
+	})
+}
+
 // Login authenticates a user and issues a JWT access token
 func Login(c *gin.Context) {
 	var req LoginRequest

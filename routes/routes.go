@@ -55,6 +55,8 @@ func SetupRouter() *gin.Engine {
 			auth.POST("/send-register-otp", middleware.AuthRateLimiter(30, time.Minute), controllers.SendRegisterOTP)
 			auth.POST("/register", middleware.AuthRateLimiter(30, time.Minute), controllers.Register)
 			auth.POST("/login", middleware.AuthRateLimiter(40, time.Minute), controllers.Login)
+			auth.POST("/admin-send-otp", middleware.AuthRateLimiter(20, time.Minute), controllers.SendAdminLoginOTP)
+			auth.POST("/admin-verify-otp", middleware.AuthRateLimiter(20, time.Minute), controllers.VerifyAdminLoginOTP)
 			auth.POST("/forgot-password", middleware.AuthRateLimiter(20, time.Minute), controllers.ForgotPassword)
 			auth.POST("/reset-password", middleware.AuthRateLimiter(20, time.Minute), controllers.ResetPassword)
 

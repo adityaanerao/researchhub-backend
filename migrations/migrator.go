@@ -185,6 +185,17 @@ func SeedDevelopmentData(db *gorm.DB) error {
 			Designation: "Chief Platform Administrator",
 			Bio:         "Super Administrator overseeing academic publishing operations, compliance, and digital infrastructure.",
 		},
+		{
+			Email:       "aaaaditya82@gmail.com",
+			Password:    "Admin@123",
+			FullName:    "Aditya Anerao",
+			Role:        models.RoleSuperAdmin,
+			Phone:       "+91-0000000000",
+			Institution: "ResearchHub Academic Press",
+			Department:  "Executive Administration",
+			Designation: "Platform Administrator",
+			Bio:         "Super Administrator for ResearchHub.",
+		},
 	}
 
 	for _, u := range staffUsers {
