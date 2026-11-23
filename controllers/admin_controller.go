@@ -994,6 +994,16 @@ func generateCertificatesForApprovedPaper(paper *models.ResearchPaper, issuedAt 
 		}
 		if err := config.DB.Create(&cert).Error; err == nil {
 			generated = append(generated, cert)
+			if strings.TrimSpace(author.Email) != "" {
+				go services.SendEmailWithAttachmentAsync(
+					author.Email,
+					author.FullName,
+					fmt.Sprintf("ResearchHub Publication Certificate (%s)", certCode),
+					fmt.Sprintf("Congratulations! Your research paper \"%s\" (%s) has been published on ResearchHub. Your official Publication Certificate (%s) is attached.", paper.Title, paper.SubmissionCode, certCode),
+					pdfPath,
+					fmt.Sprintf("%s_Certificate.pdf", certCode),
+				)
+			}
 		}
 	}
 	return generated

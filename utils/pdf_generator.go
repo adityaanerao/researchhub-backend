@@ -260,6 +260,15 @@ func GenerateCertificatePDF(
 			ay -= 26
 		}
 
+		// Dynamic College / Institution Name centered below Author Name (Times-Bold 13pt)
+		if inst := strings.TrimSpace(institution); inst != "" {
+			ix := 421 - int(float64(len(inst))*3.3)
+			if ix < 110 {
+				ix = 110
+			}
+			overlay.WriteString(fmt.Sprintf("BT /F3 13 Tf 0.12 0.24 0.36 rg %d %d Td (%s) Tj ET\n", ix, 352, escapePDFText(inst)))
+		}
+
 		// Dynamic Paper Title centered (Times-Bold 22pt, max size for section)
 		titleLines := wrapText("\""+paperTitle+"\"", 42)
 		ty := 302
