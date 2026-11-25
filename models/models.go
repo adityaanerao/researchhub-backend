@@ -55,24 +55,24 @@ type Role struct {
 // 2. users
 type User struct {
 	BaseModel
-	Email              string           `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
-	PasswordHash       string           `gorm:"type:varchar(255);not null" json:"-"`
-	FullName           string           `gorm:"type:varchar(150);not null" json:"full_name"`
-	RoleID             string           `gorm:"type:varchar(36);index" json:"role_id"`
-	RoleName           string           `gorm:"type:varchar(50);index;not null" json:"role"`
-	Phone              string           `gorm:"type:varchar(50)" json:"phone"`
-	Institution        string           `gorm:"type:varchar(200);index" json:"institution"`
-	Department         string           `gorm:"type:varchar(150)" json:"department"`
-	Designation        string           `gorm:"type:varchar(150)" json:"designation"`
-	Bio                string           `gorm:"type:text" json:"bio"`
-	AvatarURL          string           `gorm:"type:varchar(255)" json:"avatar_url"`
-	IsActive           bool             `gorm:"default:true;index" json:"is_active"`
-	ResetToken         string           `gorm:"type:varchar(255);index" json:"-"`
-	ResetTokenExpiry   *time.Time       `json:"-"`
-	LastLoginAt        *time.Time       `json:"last_login_at"`
-	StudentProfile     *StudentProfile  `gorm:"foreignKey:UserID" json:"student_profile,omitempty"`
-	ReviewerProfile    *ReviewerProfile `gorm:"foreignKey:UserID" json:"reviewer_profile,omitempty"`
-	EditorProfile      *EditorProfile   `gorm:"foreignKey:UserID" json:"editor_profile,omitempty"`
+	Email            string           `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
+	PasswordHash     string           `gorm:"type:varchar(255);not null" json:"-"`
+	FullName         string           `gorm:"type:varchar(150);not null" json:"full_name"`
+	RoleID           string           `gorm:"type:varchar(36);index" json:"role_id"`
+	RoleName         string           `gorm:"type:varchar(50);index;not null" json:"role"`
+	Phone            string           `gorm:"type:varchar(50)" json:"phone"`
+	Institution      string           `gorm:"type:varchar(200);index" json:"institution"`
+	Department       string           `gorm:"type:varchar(150)" json:"department"`
+	Designation      string           `gorm:"type:varchar(150)" json:"designation"`
+	Bio              string           `gorm:"type:text" json:"bio"`
+	AvatarURL        string           `gorm:"type:varchar(255)" json:"avatar_url"`
+	IsActive         bool             `gorm:"default:true;index" json:"is_active"`
+	ResetToken       string           `gorm:"type:varchar(255);index" json:"-"`
+	ResetTokenExpiry *time.Time       `json:"-"`
+	LastLoginAt      *time.Time       `json:"last_login_at"`
+	StudentProfile   *StudentProfile  `gorm:"foreignKey:UserID" json:"student_profile,omitempty"`
+	ReviewerProfile  *ReviewerProfile `gorm:"foreignKey:UserID" json:"reviewer_profile,omitempty"`
+	EditorProfile    *EditorProfile   `gorm:"foreignKey:UserID" json:"editor_profile,omitempty"`
 }
 
 // 3. student_profiles
@@ -134,40 +134,40 @@ type ResearchCategory struct {
 // 7. research_papers
 type ResearchPaper struct {
 	BaseModel
-	SubmissionCode          string               `gorm:"type:varchar(50);uniqueIndex;not null" json:"submission_code"`
-	Title                   string               `gorm:"type:varchar(350);not null;index" json:"title"`
-	Abstract                string               `gorm:"type:text;not null" json:"abstract"`
-	Keywords                string               `gorm:"type:varchar(500)" json:"keywords"`
-	CategoryID              string               `gorm:"type:varchar(36);index;not null" json:"category_id"`
-	Category                *ResearchCategory    `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
-	ResearchArea            string               `gorm:"type:varchar(200)" json:"research_area"`
-	StudentID               string               `gorm:"type:varchar(36);index;not null" json:"student_id"`
-	Student                 *User                `gorm:"foreignKey:StudentID" json:"student,omitempty"`
-	CorrespondingAuthor     string               `gorm:"type:varchar(150);not null" json:"corresponding_author"`
-	CorrespondingEmail      string               `gorm:"type:varchar(200);not null" json:"corresponding_email"`
-	ContactNumber           string               `gorm:"type:varchar(50)" json:"contact_number"`
-	Institution             string               `gorm:"type:varchar(200);index" json:"institution"`
-	Department              string               `gorm:"type:varchar(150)" json:"department"`
-	GuideName               string               `gorm:"type:varchar(150)" json:"guide_name"`
-	DeclarationAccepted     bool                 `gorm:"default:true" json:"declaration_accepted"`
-	OriginalityConfirmed    bool                 `gorm:"default:true" json:"originality_confirmed"`
-	ProjectLogoURL          string               `gorm:"type:varchar(500)" json:"project_logo_url"`
-	Status                  string               `gorm:"type:varchar(60);index;not null" json:"status"`
-	CurrentRound            int                  `gorm:"default:1" json:"current_round"`
-	AssignedEditorID        *string              `gorm:"type:varchar(36);index" json:"assigned_editor_id"`
-	ScreeningNotes          string               `gorm:"type:text" json:"screening_notes"`
-	EditorialNotes          string               `gorm:"type:text" json:"editorial_notes"`
-	SubmittedAt             time.Time            `json:"submitted_at"`
-	ApprovedAt              *time.Time           `json:"approved_at"`
-	PublishedAt             *time.Time           `json:"published_at"`
-	Authors                 []PaperAuthor        `gorm:"foreignKey:PaperID" json:"authors,omitempty"`
-	Files                   []PaperFile          `gorm:"foreignKey:PaperID" json:"files,omitempty"`
-	StatusHistory           []PaperStatusHistory `gorm:"foreignKey:PaperID" json:"status_history,omitempty"`
-	Assignments             []PaperAssignment    `gorm:"foreignKey:PaperID" json:"assignments,omitempty"`
-	Reviews                 []PaperReview        `gorm:"foreignKey:PaperID" json:"reviews,omitempty"`
-	Revisions               []RevisionHistory    `gorm:"foreignKey:PaperID" json:"revisions,omitempty"`
-	Decisions               []EditorialDecision  `gorm:"foreignKey:PaperID" json:"decisions,omitempty"`
-	Publication             *Publication         `gorm:"foreignKey:PaperID" json:"publication,omitempty"`
+	SubmissionCode       string               `gorm:"type:varchar(50);uniqueIndex;not null" json:"submission_code"`
+	Title                string               `gorm:"type:varchar(350);not null;index" json:"title"`
+	Abstract             string               `gorm:"type:text;not null" json:"abstract"`
+	Keywords             string               `gorm:"type:varchar(500)" json:"keywords"`
+	CategoryID           string               `gorm:"type:varchar(36);index;not null" json:"category_id"`
+	Category             *ResearchCategory    `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
+	ResearchArea         string               `gorm:"type:varchar(200)" json:"research_area"`
+	StudentID            string               `gorm:"type:varchar(36);index;not null" json:"student_id"`
+	Student              *User                `gorm:"foreignKey:StudentID" json:"student,omitempty"`
+	CorrespondingAuthor  string               `gorm:"type:varchar(150);not null" json:"corresponding_author"`
+	CorrespondingEmail   string               `gorm:"type:varchar(200);not null" json:"corresponding_email"`
+	ContactNumber        string               `gorm:"type:varchar(50)" json:"contact_number"`
+	Institution          string               `gorm:"type:varchar(200);index" json:"institution"`
+	Department           string               `gorm:"type:varchar(150)" json:"department"`
+	GuideName            string               `gorm:"type:varchar(150)" json:"guide_name"`
+	DeclarationAccepted  bool                 `gorm:"default:true" json:"declaration_accepted"`
+	OriginalityConfirmed bool                 `gorm:"default:true" json:"originality_confirmed"`
+	ProjectLogoURL       string               `gorm:"type:varchar(500)" json:"project_logo_url"`
+	Status               string               `gorm:"type:varchar(60);index;not null" json:"status"`
+	CurrentRound         int                  `gorm:"default:1" json:"current_round"`
+	AssignedEditorID     *string              `gorm:"type:varchar(36);index" json:"assigned_editor_id"`
+	ScreeningNotes       string               `gorm:"type:text" json:"screening_notes"`
+	EditorialNotes       string               `gorm:"type:text" json:"editorial_notes"`
+	SubmittedAt          time.Time            `json:"submitted_at"`
+	ApprovedAt           *time.Time           `json:"approved_at"`
+	PublishedAt          *time.Time           `json:"published_at"`
+	Authors              []PaperAuthor        `gorm:"foreignKey:PaperID" json:"authors,omitempty"`
+	Files                []PaperFile          `gorm:"foreignKey:PaperID" json:"files,omitempty"`
+	StatusHistory        []PaperStatusHistory `gorm:"foreignKey:PaperID" json:"status_history,omitempty"`
+	Assignments          []PaperAssignment    `gorm:"foreignKey:PaperID" json:"assignments,omitempty"`
+	Reviews              []PaperReview        `gorm:"foreignKey:PaperID" json:"reviews,omitempty"`
+	Revisions            []RevisionHistory    `gorm:"foreignKey:PaperID" json:"revisions,omitempty"`
+	Decisions            []EditorialDecision  `gorm:"foreignKey:PaperID" json:"decisions,omitempty"`
+	Publication          *Publication         `gorm:"foreignKey:PaperID" json:"publication,omitempty"`
 }
 
 // 8. paper_authors
@@ -229,22 +229,22 @@ type PaperAssignment struct {
 // 12. paper_reviews
 type PaperReview struct {
 	BaseModel
-	AssignmentID        string          `gorm:"type:varchar(36);uniqueIndex;not null" json:"assignment_id"`
-	PaperID             string          `gorm:"type:varchar(36);index;not null" json:"paper_id"`
-	Paper               *ResearchPaper  `gorm:"foreignKey:PaperID" json:"paper,omitempty"`
-	ReviewerID          string          `gorm:"type:varchar(36);index;not null" json:"reviewer_id"`
-	Reviewer            *User           `gorm:"foreignKey:ReviewerID" json:"reviewer,omitempty"`
-	ReviewRound         int             `gorm:"default:1" json:"review_round"`
-	OverallScore        int             `gorm:"not null" json:"overall_score"`        // 1 to 10
-	OriginalityScore    int             `gorm:"not null" json:"originality_score"`    // 1 to 10
-	MethodologyScore    int             `gorm:"not null" json:"methodology_score"`    // 1 to 10
-	TechnicalQuality    int             `gorm:"not null" json:"technical_quality"`    // 1 to 10
-	PresentationScore   int             `gorm:"not null" json:"presentation_score"`   // 1 to 10
-	CommentsToAuthor    string          `gorm:"type:text;not null" json:"comments_to_author"`
-	ConfidentialToEditor string         `gorm:"type:text" json:"confidential_to_editor"`
-	Recommendation      string          `gorm:"type:varchar(60);not null" json:"recommendation"` // ACCEPT, MINOR_REVISION, MAJOR_REVISION, REJECT
-	SubmittedAt         time.Time       `json:"submitted_at"`
-	DetailedComments    []ReviewComment `gorm:"foreignKey:ReviewID" json:"detailed_comments,omitempty"`
+	AssignmentID         string          `gorm:"type:varchar(36);uniqueIndex;not null" json:"assignment_id"`
+	PaperID              string          `gorm:"type:varchar(36);index;not null" json:"paper_id"`
+	Paper                *ResearchPaper  `gorm:"foreignKey:PaperID" json:"paper,omitempty"`
+	ReviewerID           string          `gorm:"type:varchar(36);index;not null" json:"reviewer_id"`
+	Reviewer             *User           `gorm:"foreignKey:ReviewerID" json:"reviewer,omitempty"`
+	ReviewRound          int             `gorm:"default:1" json:"review_round"`
+	OverallScore         int             `gorm:"not null" json:"overall_score"`      // 1 to 10
+	OriginalityScore     int             `gorm:"not null" json:"originality_score"`  // 1 to 10
+	MethodologyScore     int             `gorm:"not null" json:"methodology_score"`  // 1 to 10
+	TechnicalQuality     int             `gorm:"not null" json:"technical_quality"`  // 1 to 10
+	PresentationScore    int             `gorm:"not null" json:"presentation_score"` // 1 to 10
+	CommentsToAuthor     string          `gorm:"type:text;not null" json:"comments_to_author"`
+	ConfidentialToEditor string          `gorm:"type:text" json:"confidential_to_editor"`
+	Recommendation       string          `gorm:"type:varchar(60);not null" json:"recommendation"` // ACCEPT, MINOR_REVISION, MAJOR_REVISION, REJECT
+	SubmittedAt          time.Time       `json:"submitted_at"`
+	DetailedComments     []ReviewComment `gorm:"foreignKey:ReviewID" json:"detailed_comments,omitempty"`
 }
 
 // 13. review_comments
@@ -261,16 +261,16 @@ type ReviewComment struct {
 // 14. revision_history
 type RevisionHistory struct {
 	BaseModel
-	PaperID          string     `gorm:"type:varchar(36);index;not null" json:"paper_id"`
-	RevisionRound    int        `gorm:"default:1" json:"revision_round"`
-	RequestedByID    string     `gorm:"type:varchar(36);index" json:"requested_by_id"`
-	RequestComments  string     `gorm:"type:text" json:"request_comments"`
-	AuthorResponse   string     `gorm:"type:text" json:"author_response"`
-	ChangesSummary   string     `gorm:"type:text" json:"changes_summary"`
-	RevisedFileID    string     `gorm:"type:varchar(36)" json:"revised_file_id"`
-	RequestedAt      time.Time  `json:"requested_at"`
-	SubmittedAt      *time.Time `json:"submitted_at"`
-	Status           string     `gorm:"type:varchar(50);default:'PENDING'" json:"status"` // PENDING, SUBMITTED
+	PaperID         string     `gorm:"type:varchar(36);index;not null" json:"paper_id"`
+	RevisionRound   int        `gorm:"default:1" json:"revision_round"`
+	RequestedByID   string     `gorm:"type:varchar(36);index" json:"requested_by_id"`
+	RequestComments string     `gorm:"type:text" json:"request_comments"`
+	AuthorResponse  string     `gorm:"type:text" json:"author_response"`
+	ChangesSummary  string     `gorm:"type:text" json:"changes_summary"`
+	RevisedFileID   string     `gorm:"type:varchar(36)" json:"revised_file_id"`
+	RequestedAt     time.Time  `json:"requested_at"`
+	SubmittedAt     *time.Time `json:"submitted_at"`
+	Status          string     `gorm:"type:varchar(50);default:'PENDING'" json:"status"` // PENDING, SUBMITTED
 }
 
 // 15. editorial_decisions
@@ -301,52 +301,116 @@ type PublicationIssue struct {
 // 17. publications
 type Publication struct {
 	BaseModel
-	PublicationCode string            `gorm:"type:varchar(60);uniqueIndex;not null" json:"publication_code"`
-	PaperID         string            `gorm:"type:varchar(36);uniqueIndex;not null" json:"paper_id"`
-	Paper           *ResearchPaper    `gorm:"foreignKey:PaperID" json:"paper,omitempty"`
-	IssueID         *string           `gorm:"type:varchar(36);index" json:"issue_id"`
-	PublicationIssue *PublicationIssue `gorm:"foreignKey:IssueID" json:"publication_issue,omitempty"`
-	PublicationTitle string           `gorm:"type:varchar(350);not null;index" json:"publication_title"`
-	JournalName     string            `gorm:"type:varchar(200);not null" json:"journal_name"`
-	Volume          string            `gorm:"type:varchar(50);not null" json:"volume"`
-	Issue           string            `gorm:"type:varchar(50);not null" json:"issue"`
-	PublicationYear int               `gorm:"index;not null" json:"publication_year"`
-	PublicationDate time.Time         `gorm:"index" json:"publication_date"`
-	DOI             string            `gorm:"type:varchar(150)" json:"doi"` // Optional, never faked
-	ISSN            string            `gorm:"type:varchar(50)" json:"issn"` // Optional
-	PageStart       int               `json:"page_start"`
-	PageEnd         int               `json:"page_end"`
-	PublishedPDFID  string            `gorm:"type:varchar(36)" json:"published_pdf_id"`
-	PublicationURL  string            `gorm:"type:varchar(300)" json:"publication_url"`
-	DownloadCount   int               `gorm:"default:0" json:"download_count"`
-	ViewCount       int               `gorm:"default:0" json:"view_count"`
-	IsPublished     bool              `gorm:"default:false;index" json:"is_published"`
-	PublishedByID   string            `gorm:"type:varchar(36)" json:"published_by_id"`
+	PublicationCode      string            `gorm:"type:varchar(60);uniqueIndex;not null" json:"publication_code"`
+	PaperID              string            `gorm:"type:varchar(36);uniqueIndex;not null" json:"paper_id"`
+	Paper                *ResearchPaper    `gorm:"foreignKey:PaperID" json:"paper,omitempty"`
+	IssueID              *string           `gorm:"type:varchar(36);index" json:"issue_id"`
+	PublicationIssue     *PublicationIssue `gorm:"foreignKey:IssueID" json:"publication_issue,omitempty"`
+	PublicationTitle     string            `gorm:"type:varchar(350);not null;index" json:"publication_title"`
+	JournalName          string            `gorm:"type:varchar(200);not null" json:"journal_name"`
+	Volume               string            `gorm:"type:varchar(50);not null" json:"volume"`
+	Issue                string            `gorm:"type:varchar(50);not null" json:"issue"`
+	PublicationYear      int               `gorm:"index;not null" json:"publication_year"`
+	PublicationDate      time.Time         `gorm:"index" json:"publication_date"`
+	DOI                  string            `gorm:"type:varchar(150)" json:"doi"` // Optional, never faked
+	ISSN                 string            `gorm:"type:varchar(50)" json:"issn"` // Optional
+	PageStart            int               `json:"page_start"`
+	PageEnd              int               `json:"page_end"`
+	PublishedPDFID       string            `gorm:"type:varchar(36)" json:"published_pdf_id"`
+	PublicationURL       string            `gorm:"type:varchar(300)" json:"publication_url"`
+	DownloadCount        int               `gorm:"default:0" json:"download_count"`
+	ViewCount            int               `gorm:"default:0" json:"view_count"`
+	IsPublished          bool              `gorm:"default:false;index" json:"is_published"`
+	PublishedByID        string            `gorm:"type:varchar(36)" json:"published_by_id"`
+	OriginalFileID       string            `gorm:"type:varchar(36)" json:"original_file_id"`
+	FormattedFilePath    string            `gorm:"type:varchar(500)" json:"formatted_file_path"`
+	PublishedFilePath    string            `gorm:"type:varchar(500)" json:"published_file_path"`
+	FormattingStatus     string            `gorm:"type:varchar(30);default:'NOT_STARTED';index" json:"formatting_status"`
+	FormattingError      string            `gorm:"type:text" json:"formatting_error"`
+	FormattingMethod     string            `gorm:"type:varchar(40);default:'BRAND'" json:"formatting_method"`
+	TemplateVersion      string            `gorm:"type:varchar(40);default:'v1'" json:"template_version"`
+	OriginalPageCount    int               `json:"original_page_count"`
+	FormattedPageCount   int               `json:"formatted_page_count"`
+	FormattedAt          *time.Time        `json:"formatted_at"`
+	FormattedBy          string            `gorm:"type:varchar(36)" json:"formatted_by"`
+	FormattingApprovedAt *time.Time        `json:"formatting_approved_at"`
+	FormattingApprovedBy string            `gorm:"type:varchar(36)" json:"formatting_approved_by"`
+	BrandingSnapshotJSON string            `gorm:"type:text" json:"branding_snapshot_json"`
+	EmailStatus          string            `gorm:"type:varchar(30);default:'NOT_SENT';index" json:"email_status"`
+	EmailSentAt          *time.Time        `json:"email_sent_at"`
+	EmailRetryCount      int               `gorm:"default:0" json:"email_retry_count"`
+	EmailLastError       string            `gorm:"type:text" json:"email_last_error"`
+}
+
+const (
+	FormattingNotStarted = "NOT_STARTED"
+	FormattingQueued     = "QUEUED"
+	FormattingProcessing = "PROCESSING"
+	FormattingGenerated  = "GENERATED"
+	FormattingApproved   = "APPROVED"
+	FormattingFailed     = "FAILED"
+
+	EmailNotSent = "NOT_SENT"
+	EmailQueued  = "QUEUED"
+	EmailSending = "SENDING"
+	EmailSent    = "SENT"
+	EmailFailed  = "FAILED"
+)
+
+// FormattingJob represents a persistent background PDF branding job.
+type FormattingJob struct {
+	BaseModel
+	PaperID            string     `gorm:"type:varchar(36);index;not null" json:"paper_id"`
+	PublicationID      string     `gorm:"type:varchar(36);index;not null" json:"publication_id"`
+	SourceFileID       string     `gorm:"type:varchar(36);not null" json:"source_file_id"`
+	SourceFileChecksum string     `gorm:"type:varchar(128)" json:"source_file_checksum"`
+	Status             string     `gorm:"type:varchar(30);default:'QUEUED';index" json:"status"`
+	OptionsJSON        string     `gorm:"type:text" json:"options_json"`
+	OutputFilePath     string     `gorm:"type:varchar(500)" json:"output_file_path"`
+	AttemptCount       int        `gorm:"default:0" json:"attempt_count"`
+	MaxAttempts        int        `gorm:"default:3" json:"max_attempts"`
+	ErrorMessage       string     `gorm:"type:text" json:"error_message"`
+	StartedAt          *time.Time `json:"started_at"`
+	CompletedAt        *time.Time `json:"completed_at"`
+}
+
+// EmailJob represents a persistent background publication email delivery job.
+type EmailJob struct {
+	BaseModel
+	PublicationID string     `gorm:"type:varchar(36);index;not null" json:"publication_id"`
+	PaperID       string     `gorm:"type:varchar(36);index;not null" json:"paper_id"`
+	Recipient     string     `gorm:"type:varchar(200);not null" json:"recipient"`
+	Status        string     `gorm:"type:varchar(30);default:'QUEUED';index" json:"status"`
+	AttemptCount  int        `gorm:"default:0" json:"attempt_count"`
+	MaxAttempts   int        `gorm:"default:3" json:"max_attempts"`
+	LastError     string     `gorm:"type:text" json:"last_error"`
+	NextRetryAt   *time.Time `gorm:"index" json:"next_retry_at"`
+	SentAt        *time.Time `json:"sent_at"`
 }
 
 // 18. certificates
 type Certificate struct {
 	BaseModel
-	CertificateCode    string         `gorm:"type:varchar(80);uniqueIndex;not null" json:"certificate_code"`
-	PublicationID      *string        `gorm:"type:varchar(36);index" json:"publication_id"`
-	Publication        *Publication   `gorm:"foreignKey:PublicationID" json:"publication,omitempty"`
-	PaperID            string         `gorm:"type:varchar(36);index;not null" json:"paper_id"`
-	Paper              *ResearchPaper `gorm:"foreignKey:PaperID" json:"paper,omitempty"`
-	StudentID          string         `gorm:"type:varchar(36);index" json:"student_id"`
-	AuthorName         string         `gorm:"type:varchar(150);not null" json:"author_name"`
-	AuthorEmail        string         `gorm:"type:varchar(200)" json:"author_email"`
-	PaperTitle         string         `gorm:"type:varchar(350);not null" json:"paper_title"`
-	PublicationName    string         `gorm:"type:varchar(200);not null" json:"publication_name"`
-	PublicationCode    string         `gorm:"type:varchar(60);not null" json:"publication_code"`
-	Volume             string         `gorm:"type:varchar(50)" json:"volume"`
-	Issue              string         `gorm:"type:varchar(50)" json:"issue"`
-	PublicationDate    time.Time      `json:"publication_date"`
-	SignatoryName      string         `gorm:"type:varchar(150)" json:"signatory_name"`
-	SignatoryTitle     string         `gorm:"type:varchar(150)" json:"signatory_title"`
-	QRVerificationURL  string         `gorm:"type:varchar(350)" json:"qr_verification_url"`
-	PDFStoragePath     string         `gorm:"type:varchar(500)" json:"-"`
-	IsRevoked          bool           `gorm:"default:false;index" json:"is_revoked"`
-	IssuedAt           time.Time      `json:"issued_at"`
+	CertificateCode   string         `gorm:"type:varchar(80);uniqueIndex;not null" json:"certificate_code"`
+	PublicationID     *string        `gorm:"type:varchar(36);index" json:"publication_id"`
+	Publication       *Publication   `gorm:"foreignKey:PublicationID" json:"publication,omitempty"`
+	PaperID           string         `gorm:"type:varchar(36);index;not null" json:"paper_id"`
+	Paper             *ResearchPaper `gorm:"foreignKey:PaperID" json:"paper,omitempty"`
+	StudentID         string         `gorm:"type:varchar(36);index" json:"student_id"`
+	AuthorName        string         `gorm:"type:varchar(150);not null" json:"author_name"`
+	AuthorEmail       string         `gorm:"type:varchar(200)" json:"author_email"`
+	PaperTitle        string         `gorm:"type:varchar(350);not null" json:"paper_title"`
+	PublicationName   string         `gorm:"type:varchar(200);not null" json:"publication_name"`
+	PublicationCode   string         `gorm:"type:varchar(60);not null" json:"publication_code"`
+	Volume            string         `gorm:"type:varchar(50)" json:"volume"`
+	Issue             string         `gorm:"type:varchar(50)" json:"issue"`
+	PublicationDate   time.Time      `json:"publication_date"`
+	SignatoryName     string         `gorm:"type:varchar(150)" json:"signatory_name"`
+	SignatoryTitle    string         `gorm:"type:varchar(150)" json:"signatory_title"`
+	QRVerificationURL string         `gorm:"type:varchar(350)" json:"qr_verification_url"`
+	PDFStoragePath    string         `gorm:"type:varchar(500)" json:"-"`
+	IsRevoked         bool           `gorm:"default:false;index" json:"is_revoked"`
+	IssuedAt          time.Time      `json:"issued_at"`
 }
 
 // 19. certificate_verifications
@@ -375,14 +439,14 @@ type Notification struct {
 // 21. contact_messages
 type ContactMessage struct {
 	BaseModel
-	FullName    string     `gorm:"type:varchar(150);not null" json:"full_name"`
-	Email       string     `gorm:"type:varchar(200);not null" json:"email"`
-	Phone       string     `gorm:"type:varchar(50)" json:"phone"`
-	Subject     string     `gorm:"type:varchar(250);not null" json:"subject"`
-	Message     string     `gorm:"type:text;not null" json:"message"`
-	Status      string     `gorm:"type:varchar(50);default:'UNREAD';index" json:"status"` // UNREAD, READ, RESOLVED
-	AdminReply  string     `gorm:"type:text" json:"admin_reply"`
-	RepliedAt   *time.Time `json:"replied_at"`
+	FullName   string     `gorm:"type:varchar(150);not null" json:"full_name"`
+	Email      string     `gorm:"type:varchar(200);not null" json:"email"`
+	Phone      string     `gorm:"type:varchar(50)" json:"phone"`
+	Subject    string     `gorm:"type:varchar(250);not null" json:"subject"`
+	Message    string     `gorm:"type:text;not null" json:"message"`
+	Status     string     `gorm:"type:varchar(50);default:'UNREAD';index" json:"status"` // UNREAD, READ, RESOLVED
+	AdminReply string     `gorm:"type:text" json:"admin_reply"`
+	RepliedAt  *time.Time `json:"replied_at"`
 }
 
 // 22. website_contents
@@ -433,6 +497,7 @@ type Payment struct {
 	BillPDFPath       string     `gorm:"type:varchar(500)" json:"-"`
 	PaidAt            *time.Time `json:"paid_at"`
 }
+
 // 24. audit_logs
 type AuditLog struct {
 	BaseModel

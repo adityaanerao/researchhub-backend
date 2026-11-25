@@ -223,6 +223,20 @@ func DownloadPublishedPDF(c *gin.Context) {
 		return
 	}
 
+	if pub.PublishedFilePath != "" {
+		reader, contentType, size, err := services.Storage.ReadFile(pub.PublishedFilePath)
+		if err != nil {
+			utils.RespondError(c, http.StatusNotFound, "Published branded PDF unavailable on storage", nil)
+			return
+		}
+		defer reader.Close()
+		_ = config.DB.Model(&pub).Update("download_count", pub.DownloadCount+1).Error
+		downloadName := fmt.Sprintf("ResearchHub-%s-Research-Paper.pdf", pub.PublicationCode)
+		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", downloadName))
+		c.DataFromReader(http.StatusOK, size, contentType, reader, nil)
+		return
+	}
+
 	var targetFile *models.PaperFile
 	if pub.PublishedPDFID != "" {
 		var pf models.PaperFile

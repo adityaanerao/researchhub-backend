@@ -7,6 +7,7 @@ import (
 	"researchhub-backend/cmd"
 	"researchhub-backend/config"
 	"researchhub-backend/routes"
+	"researchhub-backend/services"
 )
 
 func main() {
@@ -21,6 +22,8 @@ func main() {
 		log.Println("[INFO] Seed flag completed. Exiting.")
 		return
 	}
+
+	services.StartJobWorker()
 
 	r := routes.SetupRouter()
 	port := "8080"

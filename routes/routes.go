@@ -105,7 +105,17 @@ func SetupRouter() *gin.Engine {
 				pubMgmt.GET("", controllers.ListAdminPublications)
 				pubMgmt.POST("", controllers.CreateOrPreparePublication)
 				pubMgmt.POST("/:id/publish", controllers.PublishPreparedRecord)
+				pubMgmt.GET("/:id/email/status", controllers.AdminGetEmailStatus)
+				pubMgmt.POST("/:id/email/resend", controllers.AdminResendPublicationEmail)
 			}
+
+			admin.POST("/papers/:id/format", controllers.AdminFormatPaper)
+			admin.GET("/papers/:id/format/status", controllers.AdminGetFormatStatus)
+			admin.GET("/papers/:id/format/preview", controllers.AdminPreviewFormattedPDF)
+			admin.GET("/papers/:id/format/original", controllers.AdminDownloadOriginalPDF)
+			admin.GET("/papers/:id/format/download", controllers.AdminDownloadFormattedPDF)
+			admin.POST("/papers/:id/format/regenerate", controllers.AdminFormatPaper)
+			admin.POST("/papers/:id/format/approve", controllers.AdminApproveFormattedPDF)
 
 			admin.GET("/dashboard", controllers.GetAdminDashboard)
 			admin.GET("/users", controllers.ListAdminUsers)

@@ -263,6 +263,9 @@ func PublishPreparedRecord(c *gin.Context) {
 }
 
 func finalizePublicationAndCertificates(pub *models.Publication, paper *models.ResearchPaper, actorID, actorName, actorEmail, actorRole, ip string) ([]models.Certificate, error) {
+	if !pub.IsPublished && (pub.FormattingStatus != models.FormattingApproved || strings.TrimSpace(pub.FormattedFilePath) == "") {
+		return nil, fmt.Errorf("approved ResearchHub-branded PDF is required before publishing (current status: %s)", pub.FormattingStatus)
+	}
 	now := time.Now()
 	oldStatus := paper.Status
 
@@ -270,6 +273,9 @@ func finalizePublicationAndCertificates(pub *models.Publication, paper *models.R
 	pub.PublishedByID = actorID
 	if pub.PublicationDate.IsZero() {
 		pub.PublicationDate = now
+	}
+	if pub.FormattedFilePath != "" && pub.PublishedFilePath == "" {
+		pub.PublishedFilePath = pub.FormattedFilePath
 	}
 	_ = config.DB.Save(pub).Error
 
@@ -394,5 +400,28 @@ func finalizePublicationAndCertificates(pub *models.Publication, paper *models.R
 	)
 
 	services.LogAudit(actorID, actorEmail, actorRole, "PAPER_PUBLISHED", "publications", pub.ID, "Published "+pub.PublicationCode, ip)
+	autoEmailEnabled := true
+	var autoEmailSetting models.SystemSetting
+	if err := config.DB.Where("setting_key = ?", "automatic_email_enabled").First(&autoEmailSetting).Error; err == nil && strings.EqualFold(strings.TrimSpace(autoEmailSetting.SettingValue), "false") {
+		autoEmailEnabled = false
+	}
+
+	if autoEmailEnabled && len(generatedCerts) > 0 && strings.TrimSpace(paper.CorrespondingEmail) != "" {
+		// Queue durable EmailJob for automatic delivery of branded paper & certificate (prevent duplicate queued/sent jobs)
+		var existingJob models.EmailJob
+		if err := config.DB.Where("publication_id = ? AND status IN ?", pub.ID, []string{models.EmailQueued, models.EmailSending, models.EmailSent}).First(&existingJob).Error; err != nil {
+			ej := models.EmailJob{
+				PublicationID: pub.ID,
+				PaperID:       paper.ID,
+				Recipient:     paper.CorrespondingEmail,
+				Status:        models.EmailQueued,
+				MaxAttempts:   3,
+			}
+			if eErr := config.DB.Create(&ej).Error; eErr == nil {
+				_ = config.DB.Model(pub).Update("email_status", models.EmailQueued).Error
+			}
+		}
+	}
+
 	return generatedCerts, nil
 }

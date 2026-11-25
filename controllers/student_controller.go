@@ -179,8 +179,31 @@ func SubmitResearchPaper(c *gin.Context) {
 	originalityConfirmed := c.PostForm("originality_confirmed") != "false"
 	requestedStatus := strings.ToUpper(strings.TrimSpace(c.PostForm("status")))
 	authorsJSON := c.PostForm("authors")
+	customCategoryName := strings.TrimSpace(c.PostForm("custom_category_name"))
 
-	if title == "" || abstract == "" || categoryID == "" || institution == "" {
+	if (categoryID == "" || categoryID == "__OTHER__") && customCategoryName != "" {
+		var existingCat models.ResearchCategory
+		if err := config.DB.Where("LOWER(name) = LOWER(?)", customCategoryName).First(&existingCat).Error; err == nil {
+			categoryID = existingCat.ID
+		} else {
+			code := strings.ToUpper(strings.ReplaceAll(customCategoryName, " ", ""))
+			if len(code) > 6 {
+				code = code[:6]
+			}
+			code = fmt.Sprintf("%s%d", code, time.Now().Unix()%1000)
+			newCat := models.ResearchCategory{
+				Name:        customCategoryName,
+				Code:        code,
+				Description: "Custom research category added during paper submission",
+				IsActive:    true,
+			}
+			if cErr := config.DB.Create(&newCat).Error; cErr == nil {
+				categoryID = newCat.ID
+			}
+		}
+	}
+
+	if title == "" || abstract == "" || categoryID == "" || categoryID == "__OTHER__" || institution == "" {
 		utils.RespondError(c, http.StatusBadRequest, "Title, Abstract, Research Category, and Institution are required", nil)
 		return
 	}
@@ -326,6 +349,16 @@ func SubmitResearchPaper(c *gin.Context) {
 	if initialStatus == models.StatusDraft {
 		remarks = "Research paper saved as draft."
 	}
+	// Invalidate any stale formatting approval on non-published publication records
+	_ = config.DB.Model(&models.Publication{}).
+		Where("paper_id = ? AND is_published = ?", paper.ID, false).
+		Updates(map[string]interface{}{
+			"formatting_status":      models.FormattingNotStarted,
+			"formatted_file_path":    "",
+			"formatting_approved_at": nil,
+			"formatting_approved_by": "",
+		}).Error
+
 	_ = repositories.RecordPaperStatusChange(tx, paper.ID, "", initialStatus, studentID, studentName, models.RoleStudent, remarks)
 
 	tx.Commit()
@@ -511,6 +544,16 @@ func SubmitPaperRevision(c *gin.Context) {
 	}
 
 	remarks := fmt.Sprintf("Revised manuscript (v%d) uploaded. Summary: %s", nextVersion, changesSummary)
+	// Invalidate any stale formatting approval on non-published publication records
+	_ = config.DB.Model(&models.Publication{}).
+		Where("paper_id = ? AND is_published = ?", paper.ID, false).
+		Updates(map[string]interface{}{
+			"formatting_status":      models.FormattingNotStarted,
+			"formatted_file_path":    "",
+			"formatting_approved_at": nil,
+			"formatting_approved_by": "",
+		}).Error
+
 	_ = repositories.RecordPaperStatusChange(tx, paper.ID, oldStatus, newStatus, studentID, studentName, models.RoleStudent, remarks)
 	tx.Commit()
 
@@ -624,6 +667,19 @@ func DownloadPaperFile(c *gin.Context) {
 	if userRole == models.RoleStudent && paper.StudentID != userID {
 		utils.RespondError(c, http.StatusForbidden, "Access denied: you do not own this submission", nil)
 		return
+	}
+
+	// If published and ?version=original is not explicitly requested, serve the approved branded PDF
+	if paper.Status == models.StatusPublished && c.Query("version") != "original" {
+		var pub models.Publication
+		if err := config.DB.Where("paper_id = ? AND is_published = ? AND published_file_path <> ''", paper.ID, true).First(&pub).Error; err == nil {
+			if reader, ct, size, rErr := services.Storage.ReadFile(pub.PublishedFilePath); rErr == nil {
+				defer reader.Close()
+				c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"ResearchHub-%s-Research-Paper.pdf\"", pub.PublicationCode))
+				c.DataFromReader(http.StatusOK, size, ct, reader, nil)
+				return
+			}
+		}
 	}
 
 	var targetFile *models.PaperFile
