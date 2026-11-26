@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"image/png"
 	"io"
 	"log"
 	"os"
@@ -41,11 +42,11 @@ func processNextFormattingJob() {
 	if config.DB == nil || Storage == nil {
 		return
 	}
-	var job models.FormattingJob
-	if err := config.DB.Where("status = ?", models.FormattingQueued).Order("created_at ASC").First(&job).Error; err != nil {
+	var jobs []models.FormattingJob
+	if err := config.DB.Where("status = ?", models.FormattingQueued).Order("created_at ASC").Limit(1).Find(&jobs).Error; err != nil || len(jobs) == 0 {
 		return
 	}
-	_ = ExecuteFormattingJob(&job)
+	_ = ExecuteFormattingJob(&jobs[0])
 }
 
 // ExecuteFormattingJob processes a single FormattingJob synchronously (also used by tests/manual trigger).
@@ -108,22 +109,32 @@ func ExecuteFormattingJob(job *models.FormattingJob) error {
 	}
 
 	// Retrieve official ResearchHub logo via Storage abstraction (S3 or local)
-	logoKey := "logo.png"
+	logoKey := "branding/logo.png"
 	var logoSetting models.SystemSetting
 	if err := config.DB.Where("setting_key IN ?", []string{"publication_logo", "brand_logo"}).First(&logoSetting).Error; err == nil && logoSetting.SettingValue != "" {
 		logoKey = logoSetting.SettingValue
 	}
-	logoPath := filepath.Join(tmpDir, "logo.png")
+	logoPath := ""
+	tmpLogoPath := filepath.Join(tmpDir, "logo.png")
 	if logoReader, _, _, lErr := Storage.ReadFile(logoKey); lErr == nil {
-		if lf, cErr := os.Create(logoPath); cErr == nil {
+		if lf, cErr := os.Create(tmpLogoPath); cErr == nil {
 			_, _ = io.Copy(lf, logoReader)
 			_ = lf.Close()
+			if vf, vErr := os.Open(tmpLogoPath); vErr == nil {
+				if _, pErr := png.DecodeConfig(vf); pErr == nil {
+					logoPath = tmpLogoPath
+				}
+				_ = vf.Close()
+			}
 		}
 		_ = logoReader.Close()
 	} else if localFallback := filepath.Join(storageDir, "logo.png"); func() bool { _, e := os.Stat(localFallback); return e == nil }() {
-		logoPath = localFallback
-	} else {
-		logoPath = ""
+		if vf, vErr := os.Open(localFallback); vErr == nil {
+			if _, pErr := png.DecodeConfig(vf); pErr == nil {
+				logoPath = localFallback
+			}
+			_ = vf.Close()
+		}
 	}
 
 	verifyURL := fmt.Sprintf("%s/publications/%s", appURL, pub.PublicationCode)
@@ -131,8 +142,11 @@ func ExecuteFormattingJob(job *models.FormattingJob) error {
 	if job.OptionsJSON != "" {
 		_ = json.Unmarshal([]byte(job.OptionsJSON), &opts)
 	}
+	// Never allow OptionsJSON to overwrite or blank out the server-resolved logo path
+	opts.LogoPath = logoPath
+
 	if opts.HeaderEnabled && opts.LogoPath == "" {
-		failFormattingJob(job, &pub, "required official ResearchHub logo is unavailable in storage")
+		failFormattingJob(job, &pub, "required official ResearchHub logo is unavailable or invalid PNG in storage")
 		return fmt.Errorf("required official ResearchHub logo is unavailable")
 	}
 
@@ -189,12 +203,13 @@ func processNextEmailJob() {
 	if config.DB == nil {
 		return
 	}
-	var ej models.EmailJob
+	var jobs []models.EmailJob
 	now := time.Now()
 	if err := config.DB.Where("status = ? AND (next_retry_at IS NULL OR next_retry_at <= ?)", models.EmailQueued, now).
-		Order("created_at ASC").First(&ej).Error; err != nil {
+		Order("created_at ASC").Limit(1).Find(&jobs).Error; err != nil || len(jobs) == 0 {
 		return
 	}
+	ej := jobs[0]
 
 	_ = config.DB.Model(&ej).Updates(map[string]interface{}{
 		"status":        models.EmailSending,

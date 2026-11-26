@@ -141,21 +141,6 @@ func SeedDevelopmentData(db *gorm.DB) error {
 		return nil
 	}
 
-	// 4. Seed Categories
-	categories := []models.ResearchCategory{
-		{Name: "Artificial Intelligence & Machine Learning", Code: "AIML", Discipline: "Computer Science", Description: "Deep learning, NLP, computer vision, neural architectures, and autonomous systems.", IsActive: true},
-		{Name: "Cybersecurity & Cryptography", Code: "CYBER", Discipline: "Information Security", Description: "Network defense, zero-trust architectures, post-quantum cryptography, and privacy.", IsActive: true},
-		{Name: "Data Science & Cloud Computing", Code: "DSCC", Discipline: "Computer Engineering", Description: "Distributed systems, big data analytics, cloud-native orchestration, and edge computing.", IsActive: true},
-		{Name: "Biomedical Engineering & Health Informatics", Code: "BMEH", Discipline: "Life Sciences & Healthcare", Description: "Medical imaging, clinical decision systems, bioinformatics, and wearable diagnostics.", IsActive: true},
-		{Name: "Renewable Energy & Sustainable Systems", Code: "RESS", Discipline: "Environmental & Electrical Engineering", Description: "Smart grids, solar photovoltaics, energy storage optimization, and green technologies.", IsActive: true},
-	}
-	for _, cat := range categories {
-		var existing models.ResearchCategory
-		if err := db.Where("code = ?", cat.Code).First(&existing).Error; err != nil {
-			_ = db.Create(&cat).Error
-		}
-	}
-
 	// 5. Seed Core Administrative & Editorial Staff Accounts (Super Admin, Editor, Reviewers)
 	// Students register directly via the application and are never pre-populated with dummy accounts.
 	hashPass := func(pwd string) string {
@@ -221,5 +206,25 @@ func SeedDevelopmentData(db *gorm.DB) error {
 	}
 
 	log.Println("[INFO] Core system roles, settings, categories, and editorial staff verified.")
+	return nil
+}
+
+// SeedEssentialCategories idempotently seeds default research categories in all environments (independent of SEED_DEV_DATA).
+func SeedEssentialCategories(db *gorm.DB) error {
+	categories := []models.ResearchCategory{
+		{Name: "Artificial Intelligence & Machine Learning", Code: "AIML", Discipline: "Computer Science", Description: "Deep learning, NLP, computer vision, neural architectures, and autonomous systems.", IsActive: true},
+		{Name: "Cybersecurity & Network Systems", Code: "CYBER", Discipline: "Information Security", Description: "Network defense, zero-trust architectures, post-quantum cryptography, and privacy.", IsActive: true},
+		{Name: "Data Science & Cloud Computing", Code: "DSCC", Discipline: "Computer Engineering", Description: "Distributed systems, big data analytics, cloud-native orchestration, and edge computing.", IsActive: true},
+		{Name: "Biomedical Engineering & Health Informatics", Code: "BMEH", Discipline: "Life Sciences & Healthcare", Description: "Medical imaging, clinical decision systems, bioinformatics, and wearable diagnostics.", IsActive: true},
+		{Name: "Renewable Energy & Sustainable Systems", Code: "RESS", Discipline: "Environmental & Electrical Engineering", Description: "Smart grids, solar photovoltaics, energy storage optimization, and green technologies.", IsActive: true},
+	}
+	for _, cat := range categories {
+		var existing models.ResearchCategory
+		if err := db.Where("code = ?", cat.Code).First(&existing).Error; err != nil {
+			if cErr := db.Create(&cat).Error; cErr != nil {
+				return cErr
+			}
+		}
+	}
 	return nil
 }

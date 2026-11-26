@@ -121,9 +121,7 @@ func TestBrand25PagePDFBenchmark(t *testing.T) {
 	inInfo, _ := os.Stat(in25)
 
 	logoPath := filepath.Join("..", "storage", "logo.png")
-	outDir := filepath.Join("..", "testdata", "output")
-	_ = os.MkdirAll(outDir, 0755)
-	out25 := filepath.Join(outDir, "ResearchHub-25Page-Branded.pdf")
+	out25 := filepath.Join(tmp, "ResearchHub-25Page-Branded.pdf")
 	opts := DefaultBrandingOptions(
 		"RHPUB-2026-25P",
 		"https://researchhub.buzz/publications/RHPUB-2026-25P",

@@ -207,6 +207,13 @@ func SubmitResearchPaper(c *gin.Context) {
 		utils.RespondError(c, http.StatusBadRequest, "Title, Abstract, Research Category, and Institution are required", nil)
 		return
 	}
+
+	var validCategory models.ResearchCategory
+	if err := config.DB.Where("id = ? AND is_active = ?", categoryID, true).First(&validCategory).Error; err != nil {
+		utils.RespondError(c, http.StatusBadRequest, "Invalid or inactive research category selected", nil)
+		return
+	}
+
 	if !declarationAccepted || !originalityConfirmed {
 		utils.RespondError(c, http.StatusBadRequest, "You must accept the declaration and confirm originality of the research manuscript", nil)
 		return
@@ -236,9 +243,11 @@ func SubmitResearchPaper(c *gin.Context) {
 	}
 
 	projectLogoURL := ""
+	logoObjectKey := ""
 	if logoHeader, lErr := c.FormFile("project_logo"); lErr == nil && logoHeader != nil {
-		if logoName, _, sErr := services.Storage.SaveImageFile(logoHeader, "logos"); sErr == nil {
+		if logoName, logoKey, sErr := services.Storage.SaveImageFile(logoHeader, "logos"); sErr == nil {
 			projectLogoURL = "/api/v1/public/logos/" + logoName
+			logoObjectKey = logoKey
 		}
 	}
 
@@ -278,6 +287,10 @@ func SubmitResearchPaper(c *gin.Context) {
 
 	if err := tx.Create(&paper).Error; err != nil {
 		tx.Rollback()
+		_ = services.Storage.DeleteFile(fullPath)
+		if logoObjectKey != "" {
+			_ = services.Storage.DeleteFile(logoObjectKey)
+		}
 		utils.RespondError(c, http.StatusInternalServerError, "Failed to save research paper submission", err.Error())
 		return
 	}
@@ -350,7 +363,7 @@ func SubmitResearchPaper(c *gin.Context) {
 		remarks = "Research paper saved as draft."
 	}
 	// Invalidate any stale formatting approval on non-published publication records
-	_ = config.DB.Model(&models.Publication{}).
+	_ = tx.Model(&models.Publication{}).
 		Where("paper_id = ? AND is_published = ?", paper.ID, false).
 		Updates(map[string]interface{}{
 			"formatting_status":      models.FormattingNotStarted,
@@ -545,7 +558,7 @@ func SubmitPaperRevision(c *gin.Context) {
 
 	remarks := fmt.Sprintf("Revised manuscript (v%d) uploaded. Summary: %s", nextVersion, changesSummary)
 	// Invalidate any stale formatting approval on non-published publication records
-	_ = config.DB.Model(&models.Publication{}).
+	_ = tx.Model(&models.Publication{}).
 		Where("paper_id = ? AND is_published = ?", paper.ID, false).
 		Updates(map[string]interface{}{
 			"formatting_status":      models.FormattingNotStarted,

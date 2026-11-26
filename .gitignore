@@ -1,6 +1,8 @@
 .env
 *.exe
 *.test
+researchhub-backend-linux
+testdata/output/
 storage/papers/
 storage/certificates/
 storage/logos/

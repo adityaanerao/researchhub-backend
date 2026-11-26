@@ -79,6 +79,12 @@ func AdminFormatPaper(c *gin.Context) {
 		return
 	}
 
+	var activeJob models.FormattingJob
+	if err := config.DB.Where("paper_id = ? AND status IN ?", pub.PaperID, []string{models.FormattingQueued, models.FormattingProcessing}).First(&activeJob).Error; err == nil {
+		utils.RespondError(c, http.StatusConflict, "A formatting job is already queued or processing for this paper", nil)
+		return
+	}
+
 	verifyURL := fmt.Sprintf("https://researchhub.buzz/publications/%s", pub.PublicationCode)
 	opts := utils.DefaultBrandingOptions(pub.PublicationCode, verifyURL, pub.PublicationDate.Format("January 2006"), pub.Volume, pub.Issue, "")
 	if req.HeaderEnabled != nil {
@@ -133,7 +139,16 @@ func AdminGetFormatStatus(c *gin.Context) {
 	paperID := c.Param("id")
 	var pub models.Publication
 	if err := config.DB.Where("paper_id = ?", paperID).First(&pub).Error; err != nil {
-		utils.RespondError(c, http.StatusNotFound, "Formatting record not found", nil)
+		var paper models.ResearchPaper
+		if pErr := config.DB.Where("id = ?", paperID).First(&paper).Error; pErr != nil {
+			utils.RespondError(c, http.StatusNotFound, "Research paper not found", nil)
+			return
+		}
+		utils.RespondSuccess(c, http.StatusOK, "Formatting status retrieved", gin.H{
+			"paper_id":          paper.ID,
+			"formatting_status": models.FormattingNotStarted,
+			"email_status":      models.EmailNotSent,
+		})
 		return
 	}
 	utils.RespondSuccess(c, http.StatusOK, "Formatting status retrieved", pub)

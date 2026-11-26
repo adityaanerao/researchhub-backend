@@ -10,12 +10,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"researchhub-backend/config"
 	"researchhub-backend/migrations"
 	"researchhub-backend/models"
 	"researchhub-backend/routes"
 	"researchhub-backend/services"
+	"researchhub-backend/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -56,6 +58,9 @@ func setupTestApp(t *testing.T) *gin.Engine {
 	if err := migrations.RunMigrations(db); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
+	if err := migrations.SeedEssentialCategories(db); err != nil {
+		t.Fatalf("Failed to seed essential categories: %v", err)
+	}
 	if err := migrations.SeedDevelopmentData(db); err != nil {
 		t.Fatalf("Failed to seed development data: %v", err)
 	}
@@ -94,30 +99,53 @@ func loginTestUser(t *testing.T, r *gin.Engine, email, password string) string {
 func TestEndToEndResearchPublicationLifecycle(t *testing.T) {
 	r := setupTestApp(t)
 
-	// 1. Verify Non-Student Public Registration is Blocked
+	// 1. Verify Non-Student Public Registration is Blocked (403 Forbidden)
 	badRegBody, _ := json.Marshal(map[string]string{
-		"full_name":   "Unauthorized Reviewer",
-		"email":       "hacker@example.com",
-		"password":    "Secret@123",
-		"institution": "Test Uni",
-		"role":        "SUPER_ADMIN",
+		"full_name":         "Unauthorized Admin",
+		"email":             "hacker@example.com",
+		"password":          "Secret@123",
+		"phone":             "+91-9999999999",
+		"university":        "Test University",
+		"institution":       "Test Uni",
+		"department":        "Computer Science",
+		"degree_program":    "Ph.D.",
+		"enrollment_number": "ENR-001",
+		"academic_year":     "2026",
+		"guide_name":        "Dr. Guide",
+		"research_interest": "AI",
+		"otp":               "123456",
+		"role":              "SUPER_ADMIN",
 	})
 	reqBadReg, _ := http.NewRequest("POST", "/api/v1/auth/register", bytes.NewReader(badRegBody))
 	reqBadReg.Header.Set("Content-Type", "application/json")
 	wBadReg := httptest.NewRecorder()
 	r.ServeHTTP(wBadReg, reqBadReg)
 	if wBadReg.Code != http.StatusForbidden {
-		t.Fatalf("Expected 403 Forbidden for public SUPER_ADMIN registration, got %d", wBadReg.Code)
+		t.Fatalf("Expected 403 Forbidden for public SUPER_ADMIN registration, got %d: %s", wBadReg.Code, wBadReg.Body.String())
 	}
 
-	// 2. Verify Valid Student Registration
+	// 2. Verify Valid Student Registration (with OTP)
+	_ = config.DB.Create(&models.EmailOTP{
+		Email:     "priya.nair@researchhub.org",
+		OTP:       "654321",
+		Purpose:   "REGISTER",
+		ExpiresAt: time.Now().Add(15 * time.Minute),
+		Used:      false,
+	}).Error
 	regBody, _ := json.Marshal(map[string]string{
-		"full_name":      "Priya Nair",
-		"email":          "priya.nair@researchhub.org",
-		"password":       "Student@123",
-		"institution":    "Indian Institute of Science",
-		"department":     "Computer Science",
-		"degree_program": "Ph.D. Scholar",
+		"full_name":         "Priya Nair",
+		"email":             "priya.nair@researchhub.org",
+		"password":          "Student@123",
+		"phone":             "+91-9876543210",
+		"university":        "Indian Institute of Science",
+		"institution":       "Indian Institute of Science",
+		"department":        "Computer Science",
+		"degree_program":    "Ph.D. Scholar",
+		"enrollment_number": "IISC-2026-01",
+		"academic_year":     "2026",
+		"guide_name":        "Dr. Alan Turing",
+		"research_interest": "Quantum Cryptography",
+		"otp":               "654321",
 	})
 	reqReg, _ := http.NewRequest("POST", "/api/v1/auth/register", bytes.NewReader(regBody))
 	reqReg.Header.Set("Content-Type", "application/json")
@@ -127,11 +155,14 @@ func TestEndToEndResearchPublicationLifecycle(t *testing.T) {
 		t.Fatalf("Expected 201 Created for student registration, got %d: %s", wReg.Code, wReg.Body.String())
 	}
 
-	// 3. Login as Student, Reviewer, Editor, and Super Admin
+	// 3. Login as Student and Super Admin
 	studentToken := loginTestUser(t, r, "priya.nair@researchhub.org", "Student@123")
-	reviewerToken := loginTestUser(t, r, "reviewer1@researchhub.org", "Reviewer@123")
-	editorToken := loginTestUser(t, r, "editor@researchhub.org", "Editor@123")
 	adminToken := loginTestUser(t, r, "admin@researchhub.org", "Admin@123")
+	t.Cleanup(func() {
+		if sqlDB, err := config.DB.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
 
 	// 4. Verify Role-Based Access Control (Student cannot access Admin endpoint)
 	reqRBAC, _ := http.NewRequest("GET", "/api/v1/admin/dashboard", nil)
@@ -143,8 +174,17 @@ func TestEndToEndResearchPublicationLifecycle(t *testing.T) {
 	}
 
 	// 5. Submit Research Paper with Multiple Authors & Real PDF Upload
-	var cat models.ResearchCategory
-	config.DB.First(&cat)
+	var cats []models.ResearchCategory
+	if err := config.DB.Find(&cats).Error; err != nil || len(cats) < 5 {
+		t.Fatalf("Expected 5 essential research categories, got %d (err=%v)", len(cats), err)
+	}
+	cat := cats[0]
+
+	samplePDFPath, _, pErr := utils.GenerateSamplePaperPDF(t.TempDir(), "RH-TEST-01", "Quantum-Resistant Neural Cryptography", "Priya Nair", "IISc", "Abstract", "Quantum")
+	if pErr != nil {
+		t.Fatalf("Failed to generate valid sample PDF: %v", pErr)
+	}
+	samplePDFBytes, _ := os.ReadFile(samplePDFPath)
 
 	var bodyBuf bytes.Buffer
 	mw := multipart.NewWriter(&bodyBuf)
@@ -164,7 +204,7 @@ func TestEndToEndResearchPublicationLifecycle(t *testing.T) {
 	_ = mw.WriteField("authors", `[{"full_name":"Priya Nair","email":"priya.nair@researchhub.org","institution":"Indian Institute of Science","author_order":1,"is_corresponding":true},{"full_name":"Prof. K. Subramanian","email":"subramanian@iisc.ac.in","institution":"Indian Institute of Science","author_order":2,"is_corresponding":false}]`)
 
 	fw, _ := mw.CreateFormFile("pdf_file", "manuscript.pdf")
-	_, _ = fw.Write([]byte("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n"))
+	_, _ = fw.Write(samplePDFBytes)
 	_ = mw.Close()
 
 	reqSub, _ := http.NewRequest("POST", "/api/v1/student/papers", &bodyBuf)
@@ -185,13 +225,13 @@ func TestEndToEndResearchPublicationLifecycle(t *testing.T) {
 		t.Fatalf("Expected generated paper ID and submission code")
 	}
 
-	// 6. Editor Performs Initial Screening -> Assigns Reviewer
+	// 6. Super Admin Performs Initial Screening
 	screenBody, _ := json.Marshal(map[string]string{
 		"action":          "PASS_SCREENING",
 		"screening_notes": "Formatting and originality verified.",
 	})
-	reqScreen, _ := http.NewRequest("POST", "/api/v1/editor/papers/"+paperID+"/screening", bytes.NewReader(screenBody))
-	reqScreen.Header.Set("Authorization", "Bearer "+editorToken)
+	reqScreen, _ := http.NewRequest("POST", "/api/v1/admin/papers/"+paperID+"/screening", bytes.NewReader(screenBody))
+	reqScreen.Header.Set("Authorization", "Bearer "+adminToken)
 	reqScreen.Header.Set("Content-Type", "application/json")
 	wScreen := httptest.NewRecorder()
 	r.ServeHTTP(wScreen, reqScreen)
@@ -199,52 +239,12 @@ func TestEndToEndResearchPublicationLifecycle(t *testing.T) {
 		t.Fatalf("Initial screening failed: %d %s", wScreen.Code, wScreen.Body.String())
 	}
 
-	var rev1 models.User
-	config.DB.Where("email = ?", "reviewer1@researchhub.org").First(&rev1)
-
-	assignBody, _ := json.Marshal(map[string]interface{}{
-		"reviewer_ids": []string{rev1.ID},
-		"due_date":     "2026-12-15",
-		"notes":        "Please evaluate mathematical security proof.",
-	})
-	reqAssign, _ := http.NewRequest("POST", "/api/v1/editor/papers/"+paperID+"/assign-reviewers", bytes.NewReader(assignBody))
-	reqAssign.Header.Set("Authorization", "Bearer "+editorToken)
-	reqAssign.Header.Set("Content-Type", "application/json")
-	wAssign := httptest.NewRecorder()
-	r.ServeHTTP(wAssign, reqAssign)
-	if wAssign.Code != http.StatusOK {
-		t.Fatalf("Reviewer assignment failed: %d %s", wAssign.Code, wAssign.Body.String())
-	}
-
-	// 7. Reviewer Submits Peer Review
-	var assignment models.PaperAssignment
-	config.DB.Where("paper_id = ? AND reviewer_id = ?", paperID, rev1.ID).First(&assignment)
-
-	revSubmitBody, _ := json.Marshal(map[string]interface{}{
-		"overall_score":          8,
-		"originality_score":      9,
-		"methodology_score":      8,
-		"technical_quality":      8,
-		"presentation_score":     8,
-		"comments_to_author":     "Well-structured manuscript. Please clarify theorem 2 proof bounds.",
-		"confidential_to_editor": "Recommend minor revision followed by acceptance.",
-		"recommendation":         "MINOR_REVISION",
-	})
-	reqRev, _ := http.NewRequest("POST", "/api/v1/reviewer/assignments/"+assignment.ID+"/review", bytes.NewReader(revSubmitBody))
-	reqRev.Header.Set("Authorization", "Bearer "+reviewerToken)
-	reqRev.Header.Set("Content-Type", "application/json")
-	wRev := httptest.NewRecorder()
-	r.ServeHTTP(wRev, reqRev)
-	if wRev.Code != http.StatusOK {
-		t.Fatalf("Review submission failed: %d %s", wRev.Code, wRev.Body.String())
-	}
-
-	// 8. Editor Requests Revision -> Student Uploads Revised Paper
+	// 7. Super Admin Requests Revision -> Student Uploads Revised Paper
 	reqReviseBody, _ := json.Marshal(map[string]string{
-		"comments": "Please address Reviewer 1's comment on Theorem 2 proof bounds.",
+		"comments": "Please address Theorem 2 proof bounds.",
 	})
-	reqEdRev, _ := http.NewRequest("POST", "/api/v1/editor/papers/"+paperID+"/request-revision", bytes.NewReader(reqReviseBody))
-	reqEdRev.Header.Set("Authorization", "Bearer "+editorToken)
+	reqEdRev, _ := http.NewRequest("POST", "/api/v1/admin/papers/"+paperID+"/request-revision", bytes.NewReader(reqReviseBody))
+	reqEdRev.Header.Set("Authorization", "Bearer "+adminToken)
 	reqEdRev.Header.Set("Content-Type", "application/json")
 	wEdRev := httptest.NewRecorder()
 	r.ServeHTTP(wEdRev, reqEdRev)
@@ -257,7 +257,7 @@ func TestEndToEndResearchPublicationLifecycle(t *testing.T) {
 	_ = rmw.WriteField("author_response", "We have expanded Appendix A with the full proof for Theorem 2.")
 	_ = rmw.WriteField("changes_summary", "Added Theorem 2 lemma proof and updated latency comparison table.")
 	rfw, _ := rmw.CreateFormFile("pdf_file", "manuscript_revised_v2.pdf")
-	_, _ = rfw.Write([]byte("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n"))
+	_, _ = rfw.Write(samplePDFBytes)
 	_ = rmw.Close()
 
 	reqStuRev, _ := http.NewRequest("POST", "/api/v1/student/papers/"+paperID+"/revisions", &revBuf)
@@ -269,47 +269,67 @@ func TestEndToEndResearchPublicationLifecycle(t *testing.T) {
 		t.Fatalf("Student revision upload failed: %d %s", wStuRev.Code, wStuRev.Body.String())
 	}
 
-	// 9. Editor Makes Final Decision: APPROVED
+	// 8. Queue Branded PDF, Verify Duplicate Active Job Prevention, Execute Worker, and Approve
+	reqFmt, _ := http.NewRequest("POST", "/api/v1/admin/papers/"+paperID+"/format", bytes.NewReader([]byte(`{}`)))
+	reqFmt.Header.Set("Authorization", "Bearer "+adminToken)
+	reqFmt.Header.Set("Content-Type", "application/json")
+	wFmt := httptest.NewRecorder()
+	r.ServeHTTP(wFmt, reqFmt)
+	if wFmt.Code != http.StatusAccepted {
+		t.Fatalf("Expected 202 Accepted for format job, got %d: %s", wFmt.Code, wFmt.Body.String())
+	}
+
+	// Duplicate active formatting job must return 409 Conflict
+	reqFmtDup, _ := http.NewRequest("POST", "/api/v1/admin/papers/"+paperID+"/format", bytes.NewReader([]byte(`{}`)))
+	reqFmtDup.Header.Set("Authorization", "Bearer "+adminToken)
+	reqFmtDup.Header.Set("Content-Type", "application/json")
+	wFmtDup := httptest.NewRecorder()
+	r.ServeHTTP(wFmtDup, reqFmtDup)
+	if wFmtDup.Code != http.StatusConflict {
+		t.Fatalf("Expected 409 Conflict for duplicate active format job, got %d: %s", wFmtDup.Code, wFmtDup.Body.String())
+	}
+
+	// Ensure logo.png exists in test storage and execute formatting job
+	if logoBytes, lErr := os.ReadFile(filepath.Join("storage", "logo.png")); lErr == nil {
+		_ = os.WriteFile(filepath.Join(config.Cfg.StorageLocalPath, "logo.png"), logoBytes, 0644)
+	}
+	var fmtJob models.FormattingJob
+	config.DB.Where("paper_id = ?", paperID).First(&fmtJob)
+	if jErr := services.ExecuteFormattingJob(&fmtJob); jErr != nil {
+		t.Fatalf("ExecuteFormattingJob failed: %v", jErr)
+	}
+
+	reqAppFmt, _ := http.NewRequest("POST", "/api/v1/admin/papers/"+paperID+"/format/approve", nil)
+	reqAppFmt.Header.Set("Authorization", "Bearer "+adminToken)
+	wAppFmt := httptest.NewRecorder()
+	r.ServeHTTP(wAppFmt, reqAppFmt)
+	if wAppFmt.Code != http.StatusOK {
+		t.Fatalf("Expected 200 OK for format approval, got %d: %s", wAppFmt.Code, wAppFmt.Body.String())
+	}
+
+	// 9. Super Admin Makes Final Decision: APPROVED (Auto-Publishes & Generates 2 Co-Author Certificates)
 	decBody, _ := json.Marshal(map[string]string{
 		"decision": "APPROVED",
-		"comments": "All reviewer comments addressed satisfactorily. Approved for publication.",
+		"comments": "All comments addressed satisfactorily. Approved for publication.",
 	})
-	reqDec, _ := http.NewRequest("POST", "/api/v1/editor/papers/"+paperID+"/decision", bytes.NewReader(decBody))
-	reqDec.Header.Set("Authorization", "Bearer "+editorToken)
+	reqDec, _ := http.NewRequest("POST", "/api/v1/admin/papers/"+paperID+"/decision", bytes.NewReader(decBody))
+	reqDec.Header.Set("Authorization", "Bearer "+adminToken)
 	reqDec.Header.Set("Content-Type", "application/json")
 	wDec := httptest.NewRecorder()
 	r.ServeHTTP(wDec, reqDec)
 	if wDec.Code != http.StatusOK {
-		t.Fatalf("Editorial approval failed: %d %s", wDec.Code, wDec.Body.String())
+		t.Fatalf("Editorial approval & publication failed: %d %s", wDec.Code, wDec.Body.String())
 	}
 
-	// 10. Publish Approved Paper & Verify Automatic Multi-Author Certificate Generation
-	pubBody, _ := json.Marshal(map[string]interface{}{
-		"paper_id":         paperID,
-		"journal_name":     "ResearchHub Transactions on Multidisciplinary Sciences",
-		"volume":           "12",
-		"issue":            "4",
-		"publication_year": 2026,
-		"page_start":       15,
-		"page_end":         28,
-		"publish_now":      true,
-	})
-	reqPub, _ := http.NewRequest("POST", "/api/v1/admin/publications", bytes.NewReader(pubBody))
-	reqPub.Header.Set("Authorization", "Bearer "+editorToken)
-	reqPub.Header.Set("Content-Type", "application/json")
-	wPub := httptest.NewRecorder()
-	r.ServeHTTP(wPub, reqPub)
-	if wPub.Code != http.StatusCreated {
-		t.Fatalf("Publication failed: %d %s", wPub.Code, wPub.Body.String())
-	}
-
+	// Verify publication and 2 generated certificates
 	var pubResp struct {
 		Data struct {
 			Publication  models.Publication   `json:"publication"`
 			Certificates []models.Certificate `json:"certificates"`
 		} `json:"data"`
 	}
-	_ = json.Unmarshal(wPub.Body.Bytes(), &pubResp)
+	config.DB.Where("paper_id = ?", paperID).First(&pubResp.Data.Publication)
+	config.DB.Where("paper_id = ?", paperID).Find(&pubResp.Data.Certificates)
 	if len(pubResp.Data.Certificates) != 2 {
 		t.Fatalf("Expected 2 individual certificates for the 2 co-authors, got %d", len(pubResp.Data.Certificates))
 	}

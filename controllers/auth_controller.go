@@ -228,7 +228,7 @@ func SendAdminLoginOTP(c *gin.Context) {
 
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 	var user models.User
-	if err := config.DB.Where("email = ? AND role_name = ? AND is_active = ?", email, models.RoleSuperAdmin, true).First(&user).Error; err != nil {
+	if err := config.DB.Where("LOWER(email) = ? AND role_name = ? AND is_active = ?", email, models.RoleSuperAdmin, true).First(&user).Error; err != nil {
 		utils.RespondError(c, http.StatusForbidden, "This email is not authorized for Admin OTP login", nil)
 		return
 	}

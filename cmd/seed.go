@@ -21,6 +21,10 @@ func BootstrapDatabaseAndSeed() error {
 		return err
 	}
 
+	if err := migrations.SeedEssentialCategories(db); err != nil {
+		return err
+	}
+
 	if err := migrations.SeedDevelopmentData(db); err != nil {
 		return err
 	}
