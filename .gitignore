@@ -3,6 +3,7 @@
 *.test
 researchhub-backend-linux
 testdata/output/
+testdata/verification/
 storage/papers/
 storage/certificates/
 storage/logos/

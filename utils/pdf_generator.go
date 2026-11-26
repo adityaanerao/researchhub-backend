@@ -491,7 +491,7 @@ func GenerateSamplePaperPDF(storageDir, submissionCode, title, authors, institut
 	// Header banner
 	stream.WriteString("0.118 0.161 0.231 rg 40 770 515 45 re f\n")
 	stream.WriteString(fmt.Sprintf("BT /F2 12 Tf 1 1 1 rg 55 792 Td (RESEARCHHUB MANUSCRIPT REPOSITORY  |  ID: %s) Tj ET\n", escapePDFText(submissionCode)))
-	stream.WriteString("BT /F1 9 Tf 0.85 0.88 0.95 rg 55 778 Td (Peer-Reviewed Scholarly Publication System) Tj ET\n")
+	stream.WriteString("BT /F1 9 Tf 0.85 0.88 0.95 rg 55 778 Td (Open-Access Academic Research Repository) Tj ET\n")
 
 	// Title
 	y := 735
